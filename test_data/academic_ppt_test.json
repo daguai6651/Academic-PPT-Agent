@@ -1,0 +1,439 @@
+{
+  "title": "基于 Transformer 的机器翻译模型研究",
+  "width": 1000,
+  "height": 562.5,
+  "theme": {
+    "backgroundColor": "#ffffff",
+    "themeColors": ["#5b9bd5", "#ed7d31", "#a5a5a5", "#ffc000", "#4472c4", "#70ad47"],
+    "fontColor": "#333333",
+    "fontName": "",
+    "outline": { "width": 2, "color": "#525252", "style": "solid" },
+    "shadow": { "h": 3, "v": 3, "blur": 2, "color": "#808080" }
+  },
+  "slides": [
+    {
+      "id": "slide_cover",
+      "type": "cover",
+      "elements": [
+        {
+          "type": "text",
+          "id": "cover_title",
+          "left": 100,
+          "top": 150,
+          "width": 800,
+          "height": 120,
+          "rotate": 0,
+          "content": "<p style=\"text-align: center; font-size: 40px; font-weight: bold; color: #333333;\">基于 Transformer 的机器翻译模型研究</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "title",
+          "lineHeight": 1.3,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "text",
+          "id": "cover_author",
+          "left": 200,
+          "top": 300,
+          "width": 600,
+          "height": 80,
+          "rotate": 0,
+          "content": "<p style=\"text-align: center; font-size: 22px; color: #666666;\">张工 · 江苏大学计算机科学与技术</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "lineHeight": 1.5,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "text",
+          "id": "cover_date",
+          "left": 200,
+          "top": 400,
+          "width": 600,
+          "height": 40,
+          "rotate": 0,
+          "content": "<p style=\"text-align: center; font-size: 18px; color: #999999;\">2026年4月</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "lineHeight": 1.5,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "shape",
+          "id": "cover_line",
+          "left": 350,
+          "top": 285,
+          "width": 300,
+          "height": 4,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0",
+          "fill": "#5b9bd5",
+          "fixedRatio": false,
+          "rotate": 0
+        }
+      ],
+      "background": { "type": "solid", "color": "#ffffff" }
+    },
+    {
+      "id": "slide_bg",
+      "type": "content",
+      "elements": [
+        {
+          "type": "text",
+          "id": "bg_title",
+          "left": 60,
+          "top": 30,
+          "width": 880,
+          "height": 60,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 32px; font-weight: bold; color: #333333;\">研究背景</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "title",
+          "lineHeight": 1.2,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "shape",
+          "id": "bg_line",
+          "left": 60,
+          "top": 95,
+          "width": 120,
+          "height": 4,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0",
+          "fill": "#5b9bd5",
+          "fixedRatio": false,
+          "rotate": 0
+        },
+        {
+          "type": "text",
+          "id": "bg_text1",
+          "left": 60,
+          "top": 130,
+          "width": 880,
+          "height": 100,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 20px; color: #333333; line-height: 1.8;\">• 传统序列到序列模型（Seq2Seq）依赖 RNN/LSTM，存在长距离依赖问题</p><p style=\"font-size: 20px; color: #333333; line-height: 1.8;\">• 注意力机制（Attention）缓解了部分问题，但无法并行化训练</p><p style=\"font-size: 20px; color: #333333; line-height: 1.8;\">• Transformer 提出纯注意力架构，彻底摆脱循环结构，实现并行计算</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.8,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "text",
+          "id": "bg_text2",
+          "left": 60,
+          "top": 300,
+          "width": 880,
+          "height": 200,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 22px; font-weight: bold; color: #5b9bd5;\">现有方法的不足</p><p style=\"font-size: 18px; color: #555555; line-height: 1.8; margin-top: 10px;\">1. RNN 序列计算导致训练速度慢，难以利用大规模数据</p><p style=\"font-size: 18px; color: #555555; line-height: 1.8;\">2. 长距离信息衰减严重，翻译质量随句子长度下降</p><p style=\"font-size: 18px; color: #555555; line-height: 1.8;\">3. 模型容量受限，无法充分利用 GPU 并行计算能力</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.8,
+          "paragraphSpace": 8
+        }
+      ],
+      "background": { "type": "solid", "color": "#ffffff" }
+    },
+    {
+      "id": "slide_method",
+      "type": "content",
+      "elements": [
+        {
+          "type": "text",
+          "id": "method_title",
+          "left": 60,
+          "top": 30,
+          "width": 880,
+          "height": 60,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 32px; font-weight: bold; color: #333333;\">方法概述：Self-Attention 机制</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "title",
+          "lineHeight": 1.2,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "shape",
+          "id": "method_line",
+          "left": 60,
+          "top": 95,
+          "width": 200,
+          "height": 4,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0",
+          "fill": "#5b9bd5",
+          "fixedRatio": false,
+          "rotate": 0
+        },
+        {
+          "type": "text",
+          "id": "method_desc",
+          "left": 60,
+          "top": 130,
+          "width": 880,
+          "height": 120,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 20px; color: #333333; line-height: 1.8;\">Transformer 的核心是自注意力机制（Self-Attention），通过 Q、K、V 三个矩阵计算词与词之间的关联权重，使模型能够捕捉长距离依赖关系。</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.8,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "shape",
+          "id": "method_box",
+          "left": 60,
+          "top": 280,
+          "width": 880,
+          "height": 250,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0 L 200 200 L 0 200 Z",
+          "fill": "#f0f7ff",
+          "fixedRatio": false,
+          "rotate": 0,
+          "outline": { "style": "solid", "width": 2, "color": "#5b9bd5" }
+        },
+        {
+          "type": "text",
+          "id": "method_steps",
+          "left": 100,
+          "top": 300,
+          "width": 800,
+          "height": 210,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 20px; font-weight: bold; color: #5b9bd5;\">Self-Attention 计算步骤</p><p style=\"font-size: 18px; color: #444444; line-height: 1.8; margin-top: 10px;\">1. 输入序列 X 分别通过三个线性变换得到 Q（Query）、K（Key）、V（Value）</p><p style=\"font-size: 18px; color: #444444; line-height: 1.8;\">2. 计算 Q 与 K 的点积，除以 √d_k，进行缩放防止梯度消失</p><p style=\"font-size: 18px; color: #444444; line-height: 1.8;\">3. 经过 Softmax 归一化得到注意力权重矩阵</p><p style=\"font-size: 18px; color: #444444; line-height: 1.8;\">4. 权重与 V 相乘，得到加权求和的输出表示</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.8,
+          "paragraphSpace": 5
+        }
+      ],
+      "background": { "type": "solid", "color": "#ffffff" }
+    },
+    {
+      "id": "slide_formula",
+      "type": "content",
+      "elements": [
+        {
+          "type": "text",
+          "id": "formula_title",
+          "left": 60,
+          "top": 30,
+          "width": 880,
+          "height": 60,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 32px; font-weight: bold; color: #333333;\">核心公式</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "title",
+          "lineHeight": 1.2,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "shape",
+          "id": "formula_line",
+          "left": 60,
+          "top": 95,
+          "width": 120,
+          "height": 4,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0",
+          "fill": "#5b9bd5",
+          "fixedRatio": false,
+          "rotate": 0
+        },
+        {
+          "type": "text",
+          "id": "formula_desc",
+          "left": 60,
+          "top": 130,
+          "width": 880,
+          "height": 60,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 20px; color: #333333;\">Scaled Dot-Product Attention 公式：</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.5,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "text",
+          "id": "formula_main",
+          "left": 150,
+          "top": 200,
+          "width": 700,
+          "height": 120,
+          "rotate": 0,
+          "content": "<p style=\"text-align: center; font-size: 36px; color: #333333;\">Attention(Q, K, V) = softmax(QK<sup>T</sup> / √d<sub>k</sub>)V</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.2,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "text",
+          "id": "formula_explain",
+          "left": 60,
+          "top": 340,
+          "width": 880,
+          "height": 180,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 18px; color: #555555; line-height: 1.8;\">• <span style=\"font-weight: bold;\">Q（Query）</span>：查询向量，表示当前词对其他词的关注需求</p><p style=\"font-size: 18px; color: #555555; line-height: 1.8;\">• <span style=\"font-weight: bold;\">K（Key）</span>：键向量，表示被查询词的索引信息</p><p style=\"font-size: 18px; color: #555555; line-height: 1.8;\">• <span style=\"font-weight: bold;\">V（Value）</span>：值向量，包含被查询词的实际内容信息</p><p style=\"font-size: 18px; color: #555555; line-height: 1.8;\">• <span style=\"font-weight: bold;\">√d<sub>k</sub></span>：缩放因子，防止点积过大导致 Softmax 梯度消失</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.8,
+          "paragraphSpace": 5
+        }
+      ],
+      "background": { "type": "solid", "color": "#ffffff" }
+    },
+    {
+      "id": "slide_exp",
+      "type": "content",
+      "elements": [
+        {
+          "type": "text",
+          "id": "exp_title",
+          "left": 60,
+          "top": 30,
+          "width": 880,
+          "height": 60,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 32px; font-weight: bold; color: #333333;\">实验结果</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "title",
+          "lineHeight": 1.2,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "shape",
+          "id": "exp_line",
+          "left": 60,
+          "top": 95,
+          "width": 120,
+          "height": 4,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0",
+          "fill": "#5b9bd5",
+          "fixedRatio": false,
+          "rotate": 0
+        },
+        {
+          "type": "text",
+          "id": "exp_desc",
+          "left": 60,
+          "top": 120,
+          "width": 880,
+          "height": 60,
+          "rotate": 0,
+          "content": "<p style=\"font-size: 20px; color: #333333;\">在 WMT 2014 英德翻译任务上的 BLEU 得分对比：</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "content",
+          "lineHeight": 1.5,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "table",
+          "id": "exp_table",
+          "left": 100,
+          "top": 200,
+          "width": 800,
+          "height": 300,
+          "rotate": 0,
+          "outline": { "style": "solid", "width": 1, "color": "#cccccc" },
+          "theme": {
+            "color": "#5b9bd5",
+            "rowHeader": true,
+            "rowFooter": false,
+            "colHeader": true,
+            "colFooter": false
+          },
+          "colWidths": [0.3, 0.25, 0.25, 0.2],
+          "cellMinHeight": 45,
+          "data": [
+            [
+              { "id": "c1", "colspan": 1, "rowspan": 1, "text": "模型", "style": { "bold": true, "fontsize": "18px", "align": "center", "backcolor": "#5b9bd5", "color": "#ffffff" } },
+              { "id": "c2", "colspan": 1, "rowspan": 1, "text": "BLEU", "style": { "bold": true, "fontsize": "18px", "align": "center", "backcolor": "#5b9bd5", "color": "#ffffff" } },
+              { "id": "c3", "colspan": 1, "rowspan": 1, "text": "训练时间", "style": { "bold": true, "fontsize": "18px", "align": "center", "backcolor": "#5b9bd5", "color": "#ffffff" } },
+              { "id": "c4", "colspan": 1, "rowspan": 1, "text": "参数量", "style": { "bold": true, "fontsize": "18px", "align": "center", "backcolor": "#5b9bd5", "color": "#ffffff" } }
+            ],
+            [
+              { "id": "c5", "colspan": 1, "rowspan": 1, "text": "Transformer (big)", "style": { "bold": true, "fontsize": "16px", "align": "center" } },
+              { "id": "c6", "colspan": 1, "rowspan": 1, "text": "28.4", "style": { "bold": true, "fontsize": "16px", "align": "center", "color": "#5b9bd5" } },
+              { "id": "c7", "colspan": 1, "rowspan": 1, "text": "3.5 天", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c8", "colspan": 1, "rowspan": 1, "text": "213M", "style": { "fontsize": "16px", "align": "center" } }
+            ],
+            [
+              { "id": "c9", "colspan": 1, "rowspan": 1, "text": "Transformer (base)", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c10", "colspan": 1, "rowspan": 1, "text": "27.3", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c11", "colspan": 1, "rowspan": 1, "text": "12 小时", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c12", "colspan": 1, "rowspan": 1, "text": "65M", "style": { "fontsize": "16px", "align": "center" } }
+            ],
+            [
+              { "id": "c13", "colspan": 1, "rowspan": 1, "text": "GNMT + RL", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c14", "colspan": 1, "rowspan": 1, "text": "24.6", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c15", "colspan": 1, "rowspan": 1, "text": "—", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c16", "colspan": 1, "rowspan": 1, "text": "225M", "style": { "fontsize": "16px", "align": "center" } }
+            ],
+            [
+              { "id": "c17", "colspan": 1, "rowspan": 1, "text": "ConvS2S", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c18", "colspan": 1, "rowspan": 1, "text": "25.2", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c19", "colspan": 1, "rowspan": 1, "text": "—", "style": { "fontsize": "16px", "align": "center" } },
+              { "id": "c20", "colspan": 1, "rowspan": 1, "text": "—", "style": { "fontsize": "16px", "align": "center" } }
+            ]
+          ]
+        }
+      ],
+      "background": { "type": "solid", "color": "#ffffff" }
+    },
+    {
+      "id": "slide_end",
+      "type": "end",
+      "elements": [
+        {
+          "type": "text",
+          "id": "end_thanks",
+          "left": 200,
+          "top": 200,
+          "width": 600,
+          "height": 100,
+          "rotate": 0,
+          "content": "<p style=\"text-align: center; font-size: 48px; font-weight: bold; color: #5b9bd5;\">感谢观看</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "textType": "title",
+          "lineHeight": 1.3,
+          "paragraphSpace": 5
+        },
+        {
+          "type": "text",
+          "id": "end_qa",
+          "left": 200,
+          "top": 330,
+          "width": 600,
+          "height": 50,
+          "rotate": 0,
+          "content": "<p style=\"text-align: center; font-size: 24px; color: #999999;\">Q & A</p>",
+          "defaultFontName": "",
+          "defaultColor": "#333333",
+          "lineHeight": 1.5,
+          "paragraphSpace": 5
+        }
+      ],
+      "background": { "type": "solid", "color": "#ffffff" }
+    }
+  ]
+}

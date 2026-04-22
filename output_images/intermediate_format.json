@@ -1,0 +1,403 @@
+{
+  "paper_info": {
+    "title": "Attention Is All You Need",
+    "title_en": "Attention Is All You Need",
+    "authors": [],
+    "affiliations": [],
+    "venue": null,
+    "year": 2017,
+    "abstract": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.\n\nExperiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-to-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction of the training costs of the best models from the literature.\n\nWe show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data.",
+    "keywords": [
+      "Transformer",
+      "attention mechanism",
+      "sequence transduction",
+      "BLEU",
+      "WMT 2014",
+      "encoder-decoder",
+      "parallelizable"
+    ]
+  },
+  "problem": {
+    "description": "本文旨在解决序列建模中固有的顺序计算瓶颈问题，提出一种完全摒弃循环结构（如RNN、LSTM、GRU）和卷积操作的新型模型架构——Transformer。该模型仅依赖自注意力机制（self-attention）来建模序列内任意位置间的长程依赖关系，并通过多头注意力（Multi-Head Attention）实现全局上下文的高效、并行化编码与解码。其核心目标是构建一个在保持或提升建模能力的同时，显著提升训练并行度与效率的端到端序列转换框架。",
+    "motivation": "顺序计算严重限制了模型训练速度与硬件利用率，尤其在长序列任务中导致高延迟和低GPU吞吐；而现代应用对快速迭代、大规模训练和实时推理的需求日益增长，亟需更高效的序列建模范式。",
+    "limitations_of_existing": [
+      "RNN类模型（如LSTM、GRU）受严格时序依赖约束，无法并行化隐藏状态计算，导致训练速度慢且难以扩展；尽管引入因子分解和条件计算等技巧，仍无法突破顺序本质。",
+      "基于卷积的替代方案（如ByteNet、ConvS2S）虽支持并行，但其感受野随层数增长呈线性或对数扩展，建模长距离依赖需深层堆叠，带来计算开销大、梯度传播困难等问题。"
+    ]
+  },
+  "method": {
+    "name": "Transformer",
+    "overview": "Transformer 是一种完全基于注意力机制的序列建模架构，摒弃了传统的循环（RNN）和卷积（CNN）结构。其核心思想是通过自注意力机制实现输入序列中任意位置间的直接依赖建模，从而获得恒定的最长路径长度和高度并行化的训练能力。模型由对称的编码器-解码器堆叠结构组成，每层均包含多头自注意力与前馈网络，并辅以残差连接和层归一化。解码器引入掩码自注意力以保证自回归生成特性，同时通过编码器-解码器注意力机制实现跨模态信息融合。位置编码被显式加入嵌入向量，以弥补纯注意力模型缺乏序列表示能力的缺陷。所有子层输出维度统一为 d_model，确保模块间接口一致。",
+    "key_contributions": [
+      "提出首个完全基于注意力机制的端到端序列转换模型，显著提升长程依赖建模能力与训练并行性",
+      "设计多头缩放点积注意力机制，在保持计算效率的同时增强模型对不同子空间表征的联合关注能力",
+      "引入正弦/余弦位置编码，使模型能显式感知序列顺序，并具备向未见长度外推的潜力",
+      "验证自注意力在路径长度、计算复杂度和并行性三方面优于 RNN/CNN，为后续大语言模型奠定架构基础"
+    ],
+    "modules": [
+      {
+        "name": "Encoder Stack",
+        "description": "由 N=6 个相同层堆叠构成；每层含两个子层：多头自注意力（self-attention）和位置前馈网络（FFN），每个子层后接残差连接与层归一化。",
+        "formulas": [
+          {
+            "id": "eq1",
+            "latex": "\\text{LayerNorm}(x + \\text{Sublayer}(x))",
+            "description": "残差连接加层归一化，稳定训练并缓解梯度消失",
+            "variables": {
+              "x": "子层输入向量",
+              "Sublayer(x)": "子层（如Attention或FFN）变换输出",
+              "LayerNorm": "层归一化操作"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Decoder Stack",
+        "description": "同样由 N=6 个相同层堆叠构成；每层含三个子层：掩码多头自注意力（masked self-attention）、编码器-解码器多头注意力（encoder-decoder attention）和位置前馈网络（FFN），各子层后均应用残差连接与层归一化。",
+        "formulas": [
+          {
+            "id": "eq2",
+            "latex": "\\text{LayerNorm}(x + \\text{Sublayer}(x))",
+            "description": "同编码器，用于所有三个子层的标准化残差结构",
+            "variables": {
+              "x": "子层输入向量",
+              "Sublayer(x)": "对应子层（掩码Attention/encoder-decoder Attention/FFN）输出",
+              "LayerNorm": "层归一化操作"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Scaled Dot-Product Attention",
+        "description": "基础注意力单元，计算查询Q与键K的缩放点积相似度，经softmax归一化后加权聚合值V；缩放因子 1/√d_k 防止大维度下softmax饱和导致梯度消失。",
+        "formulas": [
+          {
+            "id": "eq3",
+            "latex": "\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V",
+            "description": "缩放点积注意力计算公式",
+            "variables": {
+              "Q": "查询矩阵，形状为 [seq_len_q, d_k]",
+              "K": "键矩阵，形状为 [seq_len_k, d_k]",
+              "V": "值矩阵，形状为 [seq_len_k, d_v]",
+              "d_k": "键/查询向量维度",
+              "softmax": "逐行归一化指数函数"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Multi-Head Attention",
+        "description": "将Q/K/V分别线性投影h次，形成h组独立注意力头，每组执行Scaled Dot-Product Attention，再拼接并线性映射回d_model维；提升模型捕获不同子空间特征的能力。",
+        "formulas": [
+          {
+            "id": "eq4",
+            "latex": "\\text{MultiHead}(Q, K, V) = \\text{Concat}(\\text{head}_1, ..., \\text{head}_h)W^O \\quad \\text{where } \\text{head}_i = \\text{Attention}(QW_i^Q, KW_i^K, VW_i^V)",
+            "description": "多头注意力机制：h个并行注意力头输出拼接后经线性变换输出",
+            "variables": {
+              "W_i^Q, W_i^K, W_i^V": "第i个头对应的可学习投影矩阵",
+              "W^O": "输出投影矩阵",
+              "head_i": "第i个注意力头输出",
+              "Concat": "沿特征维度拼接操作"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Position-wise Feed-Forward Network",
+        "description": "每个位置独立应用的两层全连接网络，中间使用ReLU激活；参数在位置间共享，但随层变化；扩展隐层维度以增强非线性表达能力。",
+        "formulas": [
+          {
+            "id": "eq5",
+            "latex": "\\text{FFN}(x) = \\max(0, xW_1 + b_1)W_2 + b_2",
+            "description": "位置前馈网络：含ReLU激活的双线性变换",
+            "variables": {
+              "x": "输入向量，维度 d_model",
+              "W_1": "第一层权重矩阵，形状 [d_model, d_ff]",
+              "b_1": "第一层偏置",
+              "W_2": "第二层权重矩阵，形状 [d_ff, d_model]",
+              "b_2": "第二层偏置",
+              "d_ff": "隐层维度（文中为2048）"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Positional Encoding",
+        "description": "为输入嵌入添加固定正弦/余弦函数形式的位置编码，使模型感知token绝对位置；频率呈几何级数分布，支持相对位置的线性表示与长度外推。",
+        "formulas": [
+          {
+            "id": "eq6",
+            "latex": "PE_{(pos,2i)} = \\sin(pos/10000^{2i/d_{\\text{model}}})",
+            "description": "偶数维度的位置编码（正弦）",
+            "variables": {
+              "pos": "token在序列中的绝对位置索引",
+              "i": "维度索引（从0开始）",
+              "d_model": "模型维度（512）",
+              "10000": "控制波长范围的经验常数"
+            }
+          },
+          {
+            "id": "eq7",
+            "latex": "PE_{(pos,2i+1)} = \\cos(pos/10000^{2i/d_{\\text{model}}})",
+            "description": "奇数维度的位置编码（余弦）",
+            "variables": {
+              "pos": "token在序列中的绝对位置索引",
+              "i": "维度索引（从0开始）",
+              "d_model": "模型维度（512）",
+              "10000": "控制波长范围的经验常数"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Embedding and Softmax",
+        "description": "输入/输出token通过可学习嵌入矩阵映射为d_model维向量；词表嵌入与最终分类层共享权重矩阵，并乘以√d_model进行缩放以平衡梯度幅度。",
+        "formulas": [
+          {
+            "id": "eq8",
+            "latex": "\\text{Shared embedding weight matrix scaled by } \\sqrt{d_{\\text{model}}}",
+            "description": "嵌入层与输出层权重共享，并进行缩放以稳定训练",
+            "variables": {
+              "d_model": "模型维度（512）",
+              "shared weight matrix": "词嵌入矩阵与预softmax线性层共用的参数矩阵"
+            }
+          }
+        ]
+      }
+    ],
+    "architecture_description": "Transformer 采用编码器-解码器对称堆叠架构：编码器由6层相同模块组成，每层含多头自注意力与位置前馈网络；解码器同样6层，额外增加掩码自注意力与编码器-解码器注意力子层。所有子层均采用残差连接加层归一化。输入嵌入与正弦位置编码相加后送入编码器；解码器输入为右移的目标序列嵌入加位置编码，并通过掩码确保自回归性。最终输出经共享嵌入权重的线性层与Softmax生成词概率分布。"
+  },
+  "experiments": {
+    "datasets": [
+      {
+        "name": "WMT 2014 English-German",
+        "description": "机器翻译数据集，含约4.5M句对，使用byte-pair encoding（37K词表）",
+        "size": "4.5M sentence pairs"
+      },
+      {
+        "name": "WMT 2014 English-French",
+        "description": "机器翻译数据集，含约36M句对，使用word-piece编码（32K词表）",
+        "size": "36M sentence pairs"
+      },
+      {
+        "name": "WSJ (Wall Street Journal)",
+        "description": "英语成分句法分析数据集，约40K句子，用于英语 constituency parsing 主实验",
+        "size": "40K sentences"
+      },
+      {
+        "name": "Semi-supervised corpus for parsing",
+        "description": "半监督扩展语料，含约17M高置信度及BerkeleyParser生成的句子，用于英语成分句法分析",
+        "size": "17M sentences"
+      }
+    ],
+    "baselines": [
+      "ByteNet",
+      "Deep-Att + PosUnk"
+    ],
+    "metrics": [
+      {
+        "name": "BLEU",
+        "description": "双语评估替补分数（Bilingual Evaluation Understudy），衡量机器翻译输出与参考译文的n-gram重叠度，标准newstest2014测试集报告"
+      },
+      {
+        "name": "Perplexity (PPL)",
+        "description": "困惑度，按word-piece粒度计算，用于开发集语言建模质量评估；不可与per-word perplexity直接比较"
+      },
+      {
+        "name": "Training Cost (FLOPs)",
+        "description": "训练计算量，估算为：训练时间 × GPU数量 × GPU FP16峰值算力"
+      }
+    ],
+    "main_results": [
+      {
+        "name": "Main Translation Results on WMT 2014",
+        "description": "Transformer在WMT 2014 EN-DE和EN-FR上的主结果对比，报告BLEU分数与训练FLOPs开销",
+        "table": {
+          "caption": "Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.",
+          "headers": [
+            "Model",
+            "BLEU EN-DE",
+            "BLEU EN-FR",
+            "Training Cost (FLOPs) EN-DE",
+            "Training Cost (FLOPs) EN-FR"
+          ],
+          "rows": [
+            [
+              "ByteNet [18]",
+              "23.75",
+              "39.2",
+              null,
+              "1.0 \\cdot 10^{20}"
+            ],
+            [
+              "Deep-Att + PosUnk [39]",
+              null,
+              null,
+              null,
+              null
+            ]
+          ],
+          "highlight_row": -1
+        }
+      },
+      {
+        "name": "English Constituency Parsing Results",
+        "description": "Transformer在英语成分句法分析任务上的结果（newstest2013开发集），使用beam search且无checkpoint averaging",
+        "table": {
+          "caption": "Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013.",
+          "headers": [
+            "",
+            "N",
+            "d_model",
+            "d_ff",
+            "h",
+            "d_k",
+            "d_v",
+            "P_drop",
+            "ε_ls",
+            "train steps",
+            "PPL (dev)",
+            "BLEU (dev)",
+            "params ×10⁶"
+          ],
+          "rows": [
+            [
+              "base",
+              "6",
+              "512",
+              "2048",
+              "8",
+              "64",
+              "64",
+              "0.1",
+              "0.1",
+              "100000",
+              null,
+              null,
+              null
+            ]
+          ],
+          "highlight_row": 0
+        }
+      }
+    ],
+    "ablation_study": {
+      "description": "Table 3中系统性消融：(A) 改变注意力头数；(B) 减小key维度d_k；(C)(D) 验证模型规模与dropout对过拟合的影响；(E) 替换位置编码为可学习嵌入。所有变体均在newstest2013开发集上评估。",
+      "table": {
+        "caption": "Table 3: Variations on the Transformer architecture",
+        "headers": [
+          "",
+          "N",
+          "d_model",
+          "d_ff",
+          "h",
+          "d_k",
+          "d_v",
+          "P_drop",
+          "ε_ls",
+          "train steps",
+          "PPL (dev)",
+          "BLEU (dev)",
+          "params ×10⁶"
+        ],
+        "rows": [
+          [
+            "base",
+            "6",
+            "512",
+            "2048",
+            "8",
+            "64",
+            "64",
+            "0.1",
+            "0.1",
+            "100000",
+            null,
+            null,
+            null
+          ],
+          [
+            "(A) single-head",
+            "6",
+            "512",
+            "2048",
+            "1",
+            "64",
+            "64",
+            "0.1",
+            "0.1",
+            "100000",
+            null,
+            null,
+            null
+          ],
+          [
+            "(B) d_k=32",
+            "6",
+            "512",
+            "2048",
+            "8",
+            "32",
+            "64",
+            "0.1",
+            "0.1",
+            "100000",
+            null,
+            null,
+            null
+          ],
+          [
+            "(C) big model",
+            "6",
+            "1024",
+            "4096",
+            "16",
+            "64",
+            "64",
+            "0.3",
+            "0.1",
+            "300000",
+            null,
+            null,
+            null
+          ],
+          [
+            "(D) no dropout",
+            "6",
+            "512",
+            "2048",
+            "8",
+            "64",
+            "64",
+            "0.0",
+            "0.1",
+            "100000",
+            null,
+            null,
+            null
+          ],
+          [
+            "(E) learned pos",
+            "6",
+            "512",
+            "2048",
+            "8",
+            "64",
+            "64",
+            "0.1",
+            "0.1",
+            "100000",
+            null,
+            null,
+            null
+          ]
+        ],
+        "highlight_row": 0
+      }
+    }
+  },
+  "conclusion": {
+    "summary": "This paper introduces the Transformer, the first sequence transduction model built entirely on multi-headed self-attention, eliminating recurrence and convolution. It achieves state-of-the-art performance on WMT 2014 English-to-German and English-to-French translation tasks, outperforming prior ensembles while training significantly faster than RNN- or CNN-based models. The model also demonstrates strong generalization to non-translation tasks, such as English constituency parsing on WSJ Section 23.",
+    "future_work": "The authors plan to extend Transformers to non-text modalities including images, audio, and video. They aim to investigate local or restricted attention mechanisms to improve efficiency and scalability. Additionally, they intend to reduce the sequential nature of autoregressive generation to enable more parallelizable decoding."
+  }
+}
